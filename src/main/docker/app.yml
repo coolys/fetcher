@@ -1,0 +1,28 @@
+version: '2'
+services:
+    fetcher-app:
+        image: fetcher
+        environment:
+            - _JAVA_OPTIONS=-Xmx512m -Xms256m
+            - SPRING_PROFILES_ACTIVE=prod,swagger
+            - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://admin:$${coolybot.registry.password}@coolybot-registry:8761/eureka
+            - SPRING_CLOUD_CONFIG_URI=http://admin:$${coolybot.registry.password}@coolybot-registry:8761/config
+            - SPRING_DATA_MONGODB_URI=mongodb://fetcher-mongodb:27017
+            - SPRING_DATA_MONGODB_DATABASE=fetcher
+            - COOLYBOT_SLEEP=30 # gives time for the Coolybot Registry to boot before the application
+            - SPRING_DATA_JEST_URI=http://fetcher-elasticsearch:9200
+    fetcher-mongodb:
+        extends:
+            file: mongodb.yml
+            service: fetcher-mongodb
+    fetcher-elasticsearch:
+        extends:
+            file: elasticsearch.yml
+            service: fetcher-elasticsearch
+    coolybot-registry:
+        extends:
+            file: coolybot-registry.yml
+            service: coolybot-registry
+        environment:
+            - SPRING_CLOUD_CONFIG_SERVER_COMPOSITE_0_TYPE=native
+            - SPRING_CLOUD_CONFIG_SERVER_COMPOSITE_0_SEARCH_LOCATIONS=file:./central-config/docker-config/
