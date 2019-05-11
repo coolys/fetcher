@@ -1,6 +1,7 @@
 package io.cooly.crawler.web.rest;
 
 import io.cooly.crawler.domain.WebUrl;
+import io.cooly.crawler.service.CrawlerService;
 import io.cooly.crawler.service.WebUrlService;
 import io.cooly.crawler.web.rest.errors.BadRequestAlertException;
 import io.cooly.crawler.web.rest.util.HeaderUtil;
@@ -18,6 +19,8 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Optional;
+import java.util.logging.Level;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * REST controller for managing WebUrl.
@@ -31,6 +34,9 @@ public class WebUrlResource {
     private static final String ENTITY_NAME = "fetcherWebUrl";
 
     private final WebUrlService webUrlService;
+    
+    @Autowired
+    private CrawlerService crawlerService;
 
     public WebUrlResource(WebUrlService webUrlService) {
         this.webUrlService = webUrlService;
@@ -44,11 +50,18 @@ public class WebUrlResource {
      * @throws URISyntaxException if the Location URI syntax is incorrect
      */
     @PostMapping("/web-urls")
-    public ResponseEntity<WebUrl> createWebUrl(@RequestBody WebUrl webUrl) throws URISyntaxException {
+    public ResponseEntity<WebUrl> createWebUrl(@RequestBody WebUrl webUrl) throws URISyntaxException, Exception {
         log.debug("REST request to save WebUrl : {}", webUrl);
         if (webUrl.getId() != null) {
             throw new BadRequestAlertException("A new webUrl cannot already have an ID", ENTITY_NAME, "idexists");
         }
+        new Thread(() -> {
+            try {
+                crawlerService.start(webUrl);
+            } catch (Exception ex) {
+                java.util.logging.Logger.getLogger(WebUrlResource.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }).start();               
         WebUrl result = webUrlService.save(webUrl);
         return ResponseEntity.created(new URI("/api/web-urls/" + result.getId()))
             .headers(HeaderUtil.createEntityCreationAlert(ENTITY_NAME, result.getId().toString()))
