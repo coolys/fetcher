@@ -2,6 +2,7 @@ package io.cooly.crawler.web.rest;
 
 import io.cooly.crawler.domain.WebUrl;
 import io.cooly.crawler.service.CrawlerService;
+import io.cooly.crawler.service.PerfService;
 import io.cooly.crawler.service.WebUrlService;
 import io.cooly.crawler.web.rest.errors.BadRequestAlertException;
 import io.cooly.crawler.web.rest.util.HeaderUtil;
@@ -38,6 +39,8 @@ public class WebUrlResource {
     
     @Autowired
     private CrawlerService crawlerService;
+    @Autowired
+    private PerfService perfService;
 
     public WebUrlResource(WebUrlService webUrlService) {
         this.webUrlService = webUrlService;
@@ -56,8 +59,9 @@ public class WebUrlResource {
         if (webUrl.getId() != null) {
             throw new BadRequestAlertException("A new webUrl cannot already have an ID", ENTITY_NAME, "idexists");
         }        
+        perfService.start();
         //async crawl
-        Future<WebUrl> webCrawler = crawlerService.startCrawl(webUrl);        
+        //Future<WebUrl> webCrawler = crawlerService.startCrawl(webUrl);        
         WebUrl result = webUrlService.save(webUrl);
         return ResponseEntity.created(new URI("/api/web-urls/" + result.getId()))
             .headers(HeaderUtil.createEntityCreationAlert(ENTITY_NAME, result.getId().toString()))

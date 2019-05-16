@@ -1,5 +1,8 @@
 # fetcher
 
+perf===============376815 rate: 2653.8221673765643
+perf===============350969 rate: 2849.2544925620214
+
 crawler fetcher worker
 
 ## Development

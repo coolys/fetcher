@@ -67,6 +67,13 @@ spring:
         locator:
             discovery:
                 enabled: true
+    rabbitmq:
+        host: localhost
+        port: 5672
+        username: rabbitmq
+        password: rabbitmq
+        listener.simple.prefetch: 100
+        listener.simple.auto-startup: false
 
 server:
     port: 8082

@@ -16,7 +16,7 @@
         <repository>
             <id>retrofit</id>
             <url>https://mvnrepository.com/artifact/com.squareup.retrofit2/retrofit</url>
-          </repository>
+        </repository>
         <!-- coolybot-needle-maven-repository -->
     </repositories>
 
@@ -110,33 +110,40 @@
 
 
     <dependencies>
+        
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+            <version>2.0.8.RELEASE</version>
+        </dependency>
+        
         <!-- https://mvnrepository.com/artifact/com.squareup.retrofit2/retrofit -->
-<!--<dependency>
-    <groupId>com.squareup.retrofit2</groupId>
-    <artifactId>retrofit</artifactId>
-    <version>2.5.0</version>
-</dependency>-->
+        <!--<dependency>
+            <groupId>com.squareup.retrofit2</groupId>
+            <artifactId>retrofit</artifactId>
+            <version>2.5.0</version>
+        </dependency>-->
 
         <!-- https://mvnrepository.com/artifact/com.google.code.gson/gson -->
-<dependency>
-    <groupId>com.google.code.gson</groupId>
-    <artifactId>gson</artifactId>
-    <version>2.8.5</version>
-</dependency>
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.8.5</version>
+        </dependency>
 
         <!-- https://mvnrepository.com/artifact/com.squareup.okhttp3/okhttp -->
-<dependency>
-    <groupId>com.squareup.okhttp3</groupId>
-    <artifactId>okhttp</artifactId>
-    <version>3.14.1</version>
-</dependency>
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>okhttp</artifactId>
+            <version>3.14.1</version>
+        </dependency>
 
 
-         <dependency>
+        <dependency>
             <groupId>org.jsoup</groupId>
             <artifactId>jsoup</artifactId>
             <version>1.7.3</version>
-          </dependency>
+        </dependency>
 
             
         <dependency>
@@ -510,28 +517,28 @@
                     <artifactId>jib-maven-plugin</artifactId>
                     <version>${jib-maven-plugin.version}</version>
                     <configuration>
-                      <from>
-                          <image>openjdk:8-jre-alpine</image>
-                      </from>
-                      <to>
-                          <image>fetcher:latest</image>
-                      </to>
-                      <container>
-                          <entrypoint>
-                              <shell>sh</shell>
-                              <option>-c</option>
-                              <arg>chmod +x /entrypoint.sh &amp;&amp; sync &amp;&amp; /entrypoint.sh</arg>
-                          </entrypoint>
-                          <ports>
-                              <port>8081</port>
-                          </ports>
-                          <environment>
-                              <SPRING_OUTPUT_ANSI_ENABLED>ALWAYS</SPRING_OUTPUT_ANSI_ENABLED>
-                              <COOLYBOT_SLEEP>0</COOLYBOT_SLEEP>
-                          </environment>
-                          <useCurrentTimestamp>true</useCurrentTimestamp>
-                      </container>
-                  </configuration>
+                        <from>
+                            <image>openjdk:8-jre-alpine</image>
+                        </from>
+                        <to>
+                            <image>fetcher:latest</image>
+                        </to>
+                        <container>
+                            <entrypoint>
+                                <shell>sh</shell>
+                                <option>-c</option>
+                                <arg>chmod +x /entrypoint.sh &amp;&amp; sync &amp;&amp; /entrypoint.sh</arg>
+                            </entrypoint>
+                            <ports>
+                                <port>8081</port>
+                            </ports>
+                            <environment>
+                                <SPRING_OUTPUT_ANSI_ENABLED>ALWAYS</SPRING_OUTPUT_ANSI_ENABLED>
+                                <COOLYBOT_SLEEP>0</COOLYBOT_SLEEP>
+                            </environment>
+                            <useCurrentTimestamp>true</useCurrentTimestamp>
+                        </container>
+                    </configuration>
                 </plugin>
                 <plugin>
                     <artifactId>maven-clean-plugin</artifactId>

@@ -51,7 +51,7 @@ public final class Crawler {
         OkHttpClient httpClient = new OkHttpClient.Builder()
                 .build();
         this.client = httpClient;
-       // this.drainQueue();  
+        // this.drainQueue();  
         this.start(currentUrl);
         //this.parallelDrainQueue(50);
     }
@@ -95,69 +95,66 @@ public final class Crawler {
         }catch(Exception ex) {
         }
     }*/
-
-    public void start(HttpUrl queueUrl){
+    public void start(HttpUrl queueUrl) {
         try {
-        log.info("start fetch link: {}",queueUrl.url().toString());       
-        // Skip hosts that we've visited many times.
-        AtomicInteger hostnameCount = new AtomicInteger();
-        Set<HttpUrl> nextLinks = new HashSet<>();
-        AtomicInteger previous = hostnames.putIfAbsent(queueUrl.host(), hostnameCount);
-        if (previous != null) {
-            hostnameCount = previous;
-        }
-        if (hostnameCount.incrementAndGet() > 100) {
-            return;
-        }
-
-        Request request = new Request.Builder()
-                .url(queueUrl)
-                .build();
-        try (Response response = client.newCall(request).execute()) {
-            String responseSource;
-            responseSource = response.networkResponse() != null ? (response.networkResponse().code()
-                    + "(network: "
-                    + " over "
-                    + response.protocol()
-                    + ")") : "(cache)";
-            int responseCode = response.code();
-
-            //System.out.printf("%03d: %s %s %s%n", responseCode, queueUrl.host(), queueUrl, responseSource);
-
-            String contentType = response.header("Content-Type");
-            if (responseCode != 200 || contentType == null) {
+            log.info("start fetch link: {}", queueUrl.url().toString());
+            // Skip hosts that we've visited many times.
+            AtomicInteger hostnameCount = new AtomicInteger();
+            Set<HttpUrl> nextLinks = new HashSet<>();
+            AtomicInteger previous = hostnames.putIfAbsent(queueUrl.host(), hostnameCount);
+            if (previous != null) {
+                hostnameCount = previous;
+            }
+            if (hostnameCount.incrementAndGet() > 100) {
                 return;
             }
 
-            MediaType mediaType = MediaType.parse(contentType);
-            if (mediaType == null || !mediaType.subtype().equalsIgnoreCase("html")) {
-                return;
-            }
-            // should be in
-            Document document = Jsoup.parse(response.body().string(), queueUrl.toString());            
-            log.info("finish fetch link: {}, {}",document.title(), queueUrl.url().toString());  
-            
-            
-            for (Element element : document.select("a[href]")) {
-                String href = element.attr("href");
-                HttpUrl link = response.request().url().resolve(href);
-                if (link == null) {
-                    continue; // URL is either invalid or its scheme isn't http/https.
+            Request request = new Request.Builder()
+                    .url(queueUrl)
+                    .build();
+            try (Response response = client.newCall(request).execute()) {
+                String responseSource;
+                responseSource = response.networkResponse() != null ? (response.networkResponse().code()
+                        + "(network: "
+                        + " over "
+                        + response.protocol()
+                        + ")") : "(cache)";
+                int responseCode = response.code();
+
+                //System.out.printf("%03d: %s %s %s%n", responseCode, queueUrl.host(), queueUrl, responseSource);
+                String contentType = response.header("Content-Type");
+                if (responseCode != 200 || contentType == null) {
+                    return;
                 }
-                if (link.host().equals(url.host())) {
-                    nextLinks.add(link);
+
+                MediaType mediaType = MediaType.parse(contentType);
+                if (mediaType == null || !mediaType.subtype().equalsIgnoreCase("html")) {
+                    return;
                 }
-            }
-            for (HttpUrl nextLink : nextLinks) {                                
+                // should be in
+                Document document = Jsoup.parse(response.body().string(), queueUrl.toString());
+                log.info("finish fetch link: {}, {}", document.title(), queueUrl.url().toString());
+
+                for (Element element : document.select("a[href]")) {
+                    String href = element.attr("href");
+                    HttpUrl link = response.request().url().resolve(href);
+                    if (link == null) {
+                        continue; // URL is either invalid or its scheme isn't http/https.
+                    }
+                    if (link.host().equals(url.host())) {
+                        nextLinks.add(link);
+                    }
+                }
+                for (HttpUrl nextLink : nextLinks) {
                     WebUrl webUrl = new WebUrl();
-                    webUrl.setUrl(nextLink.url().toString());                    
+                    webUrl.setUrl(nextLink.url().toString());
                     //queue.add(nextLink.newBuilder().fragment(null).build());                                  
-                   fetchEngine.send(webUrl);
-            }            
-             
-        }
-        }catch(Exception ex) {
-            
+                    fetchEngine.send(webUrl);
+                }
+
+            }
+        } catch (Exception ex) {
+
         }
     }
 
