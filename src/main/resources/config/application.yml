@@ -142,8 +142,8 @@ info:
 
 coolybot:
     async:
-        core-pool-size: 2
-        max-pool-size: 50
+        core-pool-size: 4
+        max-pool-size: 100
         queue-capacity: 10000
     # By default CORS is disabled. Uncomment to enable.
     #cors:

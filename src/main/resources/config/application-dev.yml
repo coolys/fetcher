@@ -15,9 +15,9 @@
 
 logging:
     level:
-        ROOT: DEBUG
-        io.github.coolys: DEBUG
-        io.cooly.crawler: DEBUG
+        ROOT: INFO
+        io.github.coolys: INFO
+        io.cooly.crawler: INFO
 
 eureka:
     instance:

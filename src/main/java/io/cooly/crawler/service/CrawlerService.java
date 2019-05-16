@@ -5,37 +5,35 @@
  */
 package io.cooly.crawler.service;
 
+import io.cooly.crawler.client.FetcherServiceClient;
 import io.cooly.crawler.domain.WebUrl;
-import okhttp3.HttpUrl;
-import okhttp3.OkHttpClient;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-
+import java.util.concurrent.Future;
+import org.springframework.scheduling.annotation.AsyncResult;
 /**
  *
  * @author hungnguyendang
  */
 @Service
 public class CrawlerService {
-
+    @Autowired
+    private FetcherServiceClient fetcherServiceClient;
+    
     public void start(String url) throws Exception {
         int threadCount = 20;
-        OkHttpClient client = new OkHttpClient.Builder()
-                //.cache(cache)
-                .build();
-        Crawler crawler = new Crawler(client, url);
-        crawler.drainQueue();
-        crawler.parallelDrainQueue(threadCount);
-
     }
 
-    public void start(WebUrl weburl) throws Exception {
-        int threadCount = 20;
-        OkHttpClient client = new OkHttpClient.Builder()
-                //.cache(cache)
-                .build();
-        Crawler crawler = new Crawler(client, weburl.getUrl());
-        crawler.drainQueue();
-        crawler.parallelDrainQueue(threadCount);
+    public void start(WebUrl weburl) throws Exception {        
+        Crawler crawler = new Crawler(weburl.getUrl(), fetcherServiceClient);
+              
+    }
+    
+    @Async
+    public Future<WebUrl> startCrawl(WebUrl weburl) throws InterruptedException {
+        Crawler crawler = new Crawler(weburl.getUrl(), fetcherServiceClient);
+        return new AsyncResult<>(weburl);
     }
 
 }

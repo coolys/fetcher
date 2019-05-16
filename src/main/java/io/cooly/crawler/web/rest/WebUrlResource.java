@@ -19,6 +19,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Future;
 import java.util.logging.Level;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -51,17 +52,12 @@ public class WebUrlResource {
      */
     @PostMapping("/web-urls")
     public ResponseEntity<WebUrl> createWebUrl(@RequestBody WebUrl webUrl) throws URISyntaxException, Exception {
-        log.debug("REST request to save WebUrl : {}", webUrl);
+        //log.debug("REST request to save WebUrl : {}", webUrl);
         if (webUrl.getId() != null) {
             throw new BadRequestAlertException("A new webUrl cannot already have an ID", ENTITY_NAME, "idexists");
-        }
-        new Thread(() -> {
-            try {
-                crawlerService.start(webUrl);
-            } catch (Exception ex) {
-                java.util.logging.Logger.getLogger(WebUrlResource.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }).start();               
+        }        
+        //async crawl
+        Future<WebUrl> webCrawler = crawlerService.startCrawl(webUrl);        
         WebUrl result = webUrlService.save(webUrl);
         return ResponseEntity.created(new URI("/api/web-urls/" + result.getId()))
             .headers(HeaderUtil.createEntityCreationAlert(ENTITY_NAME, result.getId().toString()))

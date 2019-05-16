@@ -9,13 +9,13 @@ package io.cooly.crawler.service;
  *
  * @author hungnguyendang
  */
-import java.io.IOException;
+import io.cooly.crawler.client.FetcherServiceClient;
+import io.cooly.crawler.domain.WebUrl;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import okhttp3.HttpUrl;
@@ -23,67 +23,86 @@ import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
-import okhttp3.internal.NamedRunnable;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Fetches HTML from a requested URL, follows the links, and repeats.
  */
 public final class Crawler {
 
-    private final OkHttpClient client;
+    private final Logger log = LoggerFactory.getLogger(Crawler.class);
     private final Set<HttpUrl> fetchedUrls = Collections.synchronizedSet(new LinkedHashSet<>());
     private final LinkedBlockingQueue<HttpUrl> queue = new LinkedBlockingQueue<>();
     private final ConcurrentHashMap<String, AtomicInteger> hostnames = new ConcurrentHashMap<>();
-    //private final String currentUrl;
+    private final HttpUrl url;
+    private final FetcherServiceClient fetchEngine;
+    private final OkHttpClient client;
 
-    public Crawler(OkHttpClient client, String url) {
-        this.client = client;
-        //this.currentUrl = url;
-        this.queue.add(HttpUrl.get(url));
+    public Crawler(String url, FetcherServiceClient fetchEngine) {
+        HttpUrl currentUrl = HttpUrl.get(url);
+        this.queue.add(currentUrl);
+        this.url = currentUrl;
+        this.fetchEngine = fetchEngine;
 
+        OkHttpClient httpClient = new OkHttpClient.Builder()
+                .build();
+        this.client = httpClient;
+       // this.drainQueue();  
+        this.start(currentUrl);
+        //this.parallelDrainQueue(50);
     }
 
-    public void parallelDrainQueue(int threadCount) {
-        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
-        for (int i = 0; i < threadCount; i++) {
-            executor.execute(new NamedRunnable("Crawler %s", i) {
-                @Override
-                protected void execute() {
-                    try {
-                        drainQueue();
-                    } catch (Exception e) {
-                    }
-                }
-            });
-        }
-        executor.shutdown();
-    }
+//    private void parallelDrainQueue(int threadCount) {
+//        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+//        for (int i = 0; i < threadCount; i++) {
+//            executor.execute(new NamedRunnable("Crawler %s", i) {
+//                @Override
+//                protected void execute() {
+//                    try {
+//                        drainQueue();
+//                    } catch (Exception e) {
+//                        e.printStackTrace();
+//                    }
+//                }
+//            });
+//        }
+//        executor.shutdown();
+//    }
 
-    public void drainQueue() throws Exception {
-        for (HttpUrl url; (url = queue.take()) != null;) {
-            if (!fetchedUrls.add(url)) {
+    /*
+    private void drainQueue() {
+        try {
+        for (HttpUrl queueUrl; (queueUrl = queue.take()) != null;) {
+            if (!fetchedUrls.add(queueUrl)) {
                 continue;
             }
 
             Thread currentThread = Thread.currentThread();
             String originalName = currentThread.getName();
-            currentThread.setName("Crawler " + url.toString());
+            currentThread.setName("Crawler " + queueUrl.toString());
             try {
-                fetch(url);
+                start(queueUrl);
             } catch (IOException e) {
-                System.out.printf("XXX: %s %s%n", url, e);
+                System.out.printf("XXX: %s %s%n", queueUrl, e);
             } finally {
                 currentThread.setName(originalName);
             }
         }
-    }
+        }catch(Exception ex) {
+        }
+    }*/
 
-    public void fetch(HttpUrl url) throws IOException {
+    public void start(HttpUrl queueUrl){
+        try {
+        log.info("start fetch link: {}",queueUrl.url().toString());       
         // Skip hosts that we've visited many times.
         AtomicInteger hostnameCount = new AtomicInteger();
-        AtomicInteger previous = hostnames.putIfAbsent(url.host(), hostnameCount);
+        Set<HttpUrl> nextLinks = new HashSet<>();
+        AtomicInteger previous = hostnames.putIfAbsent(queueUrl.host(), hostnameCount);
         if (previous != null) {
             hostnameCount = previous;
         }
@@ -92,7 +111,7 @@ public final class Crawler {
         }
 
         Request request = new Request.Builder()
-                .url(url)
+                .url(queueUrl)
                 .build();
         try (Response response = client.newCall(request).execute()) {
             String responseSource;
@@ -103,7 +122,7 @@ public final class Crawler {
                     + ")") : "(cache)";
             int responseCode = response.code();
 
-            System.out.printf("%03d: %s %s %s%n", responseCode, url.host(), url, responseSource);
+            //System.out.printf("%03d: %s %s %s%n", responseCode, queueUrl.host(), queueUrl, responseSource);
 
             String contentType = response.header("Content-Type");
             if (responseCode != 200 || contentType == null) {
@@ -114,31 +133,32 @@ public final class Crawler {
             if (mediaType == null || !mediaType.subtype().equalsIgnoreCase("html")) {
                 return;
             }
-
             // should be in
-            Document document = Jsoup.parse(response.body().string(), url.toString());
-            document.select("a[href]").stream().map((element) -> element.attr("href")).map((href) -> response.request().url().resolve(href)).filter((link) -> !(link == null)).forEachOrdered((link) -> {
-                // URL is either invalid or its scheme isn't http/https.
-                // send back to fetcher
-                queue.add(link.newBuilder().fragment(null).build());
-            });
+            Document document = Jsoup.parse(response.body().string(), queueUrl.toString());            
+            log.info("finish fetch link: {}, {}",document.title(), queueUrl.url().toString());  
+            
+            
+            for (Element element : document.select("a[href]")) {
+                String href = element.attr("href");
+                HttpUrl link = response.request().url().resolve(href);
+                if (link == null) {
+                    continue; // URL is either invalid or its scheme isn't http/https.
+                }
+                if (link.host().equals(url.host())) {
+                    nextLinks.add(link);
+                }
+            }
+            for (HttpUrl nextLink : nextLinks) {                                
+                    WebUrl webUrl = new WebUrl();
+                    webUrl.setUrl(nextLink.url().toString());                    
+                    //queue.add(nextLink.newBuilder().fragment(null).build());                                  
+                   fetchEngine.send(webUrl);
+            }            
+             
+        }
+        }catch(Exception ex) {
+            
         }
     }
 
-//  public void addUrlToQueue(String url) {
-//     this.queue.add(HttpUrl.get(url));
-//  } 
-//  public static void main(String[] args) throws IOException, Exception {
-//    int threadCount = 20;
-//    long cacheByteCount = 1024L * 1024L * 100L;
-//
-//    //Cache cache = new Cache(new File(args[0]), cacheByteCount);
-//    OkHttpClient client = new OkHttpClient.Builder()
-//        //.cache(cache)
-//        .build();
-//    Crawler crawler = new Crawler(client);
-//    crawler.queue.add(HttpUrl.get("https://vnexpress.net/"));        
-//    crawler.drainQueue();
-//    crawler.parallelDrainQueue(threadCount);
-//  }
 }
