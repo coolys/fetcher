@@ -6,28 +6,28 @@
 package io.cooly.crawler.service;
 
 /**
- *
  * @author hungnguyendang
  */
+
 import io.cooly.crawler.client.FetcherServiceClient;
 import io.cooly.crawler.domain.WebUrl;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.atomic.AtomicInteger;
-import okhttp3.HttpUrl;
-import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
+import okhttp3.*;
+import okhttp3.internal.NamedRunnable;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Fetches HTML from a requested URL, follows the links, and repeats.
@@ -40,61 +40,63 @@ public final class Crawler {
     private final ConcurrentHashMap<String, AtomicInteger> hostnames = new ConcurrentHashMap<>();
     private final HttpUrl url;
     private final FetcherServiceClient fetchEngine;
+    private final QueueService queueService;
     private final OkHttpClient client;
 
-    public Crawler(String url, FetcherServiceClient fetchEngine) {
+    public Crawler(String url, FetcherServiceClient fetchEngine, QueueService queueService) {
         HttpUrl currentUrl = HttpUrl.get(url);
         this.queue.add(currentUrl);
         this.url = currentUrl;
         this.fetchEngine = fetchEngine;
+        this.queueService = queueService;
 
         OkHttpClient httpClient = new OkHttpClient.Builder()
-                .build();
+            .build();
         this.client = httpClient;
-        // this.drainQueue();  
-        this.start(currentUrl);
-        //this.parallelDrainQueue(50);
+        //this.drainQueue();
+         this.start(currentUrl);
+       // this.parallelDrainQueue(20);
     }
 
-//    private void parallelDrainQueue(int threadCount) {
-//        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
-//        for (int i = 0; i < threadCount; i++) {
-//            executor.execute(new NamedRunnable("Crawler %s", i) {
-//                @Override
-//                protected void execute() {
-//                    try {
-//                        drainQueue();
-//                    } catch (Exception e) {
-//                        e.printStackTrace();
-//                    }
-//                }
-//            });
-//        }
-//        executor.shutdown();
-//    }
+    private void parallelDrainQueue(int threadCount) {
+        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+        for (int i = 0; i < threadCount; i++) {
+            executor.execute(new NamedRunnable("Crawler %s", i) {
+                @Override
+                protected void execute() {
+                    try {
+                        drainQueue();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+        }
+        executor.shutdown();
+    }
 
-    /*
+
     private void drainQueue() {
         try {
-        for (HttpUrl queueUrl; (queueUrl = queue.take()) != null;) {
-            if (!fetchedUrls.add(queueUrl)) {
-                continue;
+            for (HttpUrl queueUrl; (queueUrl = queue.take()) != null; ) {
+                if (!fetchedUrls.add(queueUrl)) {
+                    continue;
+                }
+                Thread currentThread = Thread.currentThread();
+                String originalName = currentThread.getName();
+                currentThread.setName("Crawler " + queueUrl.toString());
+                try {
+                    start(queueUrl);
+                } catch (Exception e) {
+                    System.out.printf("XXX: %s %s%n", queueUrl, e);
+                } finally {
+                    currentThread.setName(originalName);
+                }
             }
+        } catch (Exception ex) {
+        }
+    }
 
-            Thread currentThread = Thread.currentThread();
-            String originalName = currentThread.getName();
-            currentThread.setName("Crawler " + queueUrl.toString());
-            try {
-                start(queueUrl);
-            } catch (IOException e) {
-                System.out.printf("XXX: %s %s%n", queueUrl, e);
-            } finally {
-                currentThread.setName(originalName);
-            }
-        }
-        }catch(Exception ex) {
-        }
-    }*/
     public void start(HttpUrl queueUrl) {
         try {
             log.info("start fetch link: {}", queueUrl.url().toString());
@@ -110,15 +112,15 @@ public final class Crawler {
             }
 
             Request request = new Request.Builder()
-                    .url(queueUrl)
-                    .build();
+                .url(queueUrl)
+                .build();
             try (Response response = client.newCall(request).execute()) {
                 String responseSource;
                 responseSource = response.networkResponse() != null ? (response.networkResponse().code()
-                        + "(network: "
-                        + " over "
-                        + response.protocol()
-                        + ")") : "(cache)";
+                    + "(network: "
+                    + " over "
+                    + response.protocol()
+                    + ")") : "(cache)";
                 int responseCode = response.code();
 
                 //System.out.printf("%03d: %s %s %s%n", responseCode, queueUrl.host(), queueUrl, responseSource);
@@ -146,15 +148,17 @@ public final class Crawler {
                     }
                 }
                 for (HttpUrl nextLink : nextLinks) {
+                    log.info("next link: {}", nextLink.url().toString());
                     WebUrl webUrl = new WebUrl();
                     webUrl.setUrl(nextLink.url().toString());
                     //queue.add(nextLink.newBuilder().fragment(null).build());                                  
-                    fetchEngine.send(webUrl);
+                    //fetchEngine.send(webUrl);
+                    this.queueService.start(webUrl);
                 }
 
             }
         } catch (Exception ex) {
-
+            log.info("Exception     : {}", ex.toString());
         }
     }
 

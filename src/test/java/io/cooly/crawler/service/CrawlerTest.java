@@ -51,7 +51,7 @@ public class CrawlerTest {
             webUrl.setUrl("http://kenh14.vn/");
             FetcherServiceClient fetcher = null;
           
-            Crawler crawler = new Crawler(webUrl.getUrl(), fetcher);
+           // Crawler crawler = new Crawler(webUrl.getUrl(), fetcher);
             //crawler.start();
             //crawler.drainQueue();
           //  Set<WebUrl> nextLinks = crawler.getNextLink();

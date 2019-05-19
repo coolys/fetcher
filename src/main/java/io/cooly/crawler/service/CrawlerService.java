@@ -20,19 +20,19 @@ import org.springframework.scheduling.annotation.AsyncResult;
 public class CrawlerService {
     @Autowired
     private FetcherServiceClient fetcherServiceClient;
-    
+
     public void start(String url) throws Exception {
         int threadCount = 20;
     }
 
-    public void start(WebUrl weburl) throws Exception {        
-        Crawler crawler = new Crawler(weburl.getUrl(), fetcherServiceClient);
+    public void start(WebUrl weburl, QueueService queueService) throws Exception {
+        Crawler crawler = new Crawler(weburl.getUrl(), fetcherServiceClient, queueService);
               
     }
     
     @Async
-    public Future<WebUrl> startCrawl(WebUrl weburl) throws InterruptedException {
-        Crawler crawler = new Crawler(weburl.getUrl(), fetcherServiceClient);
+    public Future<WebUrl> startCrawl(WebUrl weburl, QueueService queueService) throws InterruptedException {
+        Crawler crawler = new Crawler(weburl.getUrl(), fetcherServiceClient, queueService);
         return new AsyncResult<>(weburl);
     }
 

@@ -2,7 +2,7 @@ package io.cooly.crawler.web.rest;
 
 import io.cooly.crawler.domain.WebUrl;
 import io.cooly.crawler.service.CrawlerService;
-import io.cooly.crawler.service.PerfService;
+import io.cooly.crawler.service.QueueService;
 import io.cooly.crawler.service.WebUrlService;
 import io.cooly.crawler.web.rest.errors.BadRequestAlertException;
 import io.cooly.crawler.web.rest.util.HeaderUtil;
@@ -20,8 +20,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.Future;
-import java.util.logging.Level;
+
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
@@ -40,7 +39,7 @@ public class WebUrlResource {
     @Autowired
     private CrawlerService crawlerService;
     @Autowired
-    private PerfService perfService;
+    private QueueService queueService;
 
     public WebUrlResource(WebUrlService webUrlService) {
         this.webUrlService = webUrlService;
@@ -58,8 +57,8 @@ public class WebUrlResource {
         //log.debug("REST request to save WebUrl : {}", webUrl);
         if (webUrl.getId() != null) {
             throw new BadRequestAlertException("A new webUrl cannot already have an ID", ENTITY_NAME, "idexists");
-        }        
-        perfService.start();
+        }
+        crawlerService.start(webUrl, queueService);
         //async crawl
         //Future<WebUrl> webCrawler = crawlerService.startCrawl(webUrl);        
         WebUrl result = webUrlService.save(webUrl);
