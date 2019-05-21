@@ -57,6 +57,15 @@ public class QueueService {
     final static ObjectMapper objectMapper = new ObjectMapper();
 
 
+    @Bean
+    public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory() {
+        SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+        factory.setConnectionFactory(connectionFactory());
+        factory.setConcurrentConsumers(10);
+        factory.setMaxConcurrentConsumers(30);
+        return factory;
+    }
+    
    // private final CountDownLatch latch = new CountDownLatch(1_000_000);
 
     public void start(WebUrl webUrl) {
