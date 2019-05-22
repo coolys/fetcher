@@ -56,9 +56,8 @@ public class QueueService {
 
     final static Gson gson = new Gson();
 
-
-
     @Bean
+
     SimpleMessageListenerContainer container(ConnectionFactory connectionFactory,
                                              MessageListenerAdapter listenerAdapter) {
         SimpleMessageListenerContainer container = new SimpleMessageListenerContainer();
