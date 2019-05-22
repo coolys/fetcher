@@ -68,13 +68,10 @@ spring:
             discovery:
                 enabled: true
     rabbitmq:
-        host: localhost
+        host: 95.179.232.127
         port: 5672
         username: rabbitmq
         password: rabbitmq
-        listener.simple.prefetch: 100
-        listener.simple.transaction-size: 50
-        listener.simple.auto-startup: false
 
 server:
     port: 8082

@@ -18,6 +18,8 @@ import org.springframework.amqp.AmqpException;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
+import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.rabbit.listener.RabbitListenerEndpointRegistry;
@@ -54,17 +56,24 @@ public class QueueService {
 
     final static Gson gson = new Gson();
 
-    final static ObjectMapper objectMapper = new ObjectMapper();
 
 
-   // private final CountDownLatch latch = new CountDownLatch(1_000_000);
+    @Bean
+    SimpleMessageListenerContainer container(ConnectionFactory connectionFactory,
+                                             MessageListenerAdapter listenerAdapter) {
+        SimpleMessageListenerContainer container = new SimpleMessageListenerContainer();
+        container.setConnectionFactory(connectionFactory);
+        container.setQueueNames("crawl");
+        container.setConcurrentConsumers(30);
+        container.setMaxConcurrentConsumers(50);
+        container.setMessageListener(listenerAdapter);
+        return container;
+    }
 
     public void start(WebUrl webUrl) {
         try {
             String messageContent = convertLinkToString(webUrl);
             template.convertAndSend("crawl", messageContent);
-            this.registry.start();
-
         } catch (Exception ex) {
             log.info("QueueService ex..........: {}",ex.toString());
         }
@@ -77,25 +86,14 @@ public class QueueService {
 
     }
 
-    public static WebUrl convertToLink(String message) {
-        if(message == null) return null;
-        WebUrl content = gson.fromJson(message, WebUrl.class);
-        return content;
-
+    @Bean
+    MessageListenerAdapter listenerAdapter(FetchBotWorker worker) {
+        return new MessageListenerAdapter(worker, "receiveMessage");
     }
-
 
     @Bean
     public Queue crawl() {
         return new Queue("crawl", false, false, true);
     }
 
-    @RabbitListener(queues = "crawl")
-    public void listen(Message message) throws Exception {
-        log.info("received: {}", message);
-        String content = new String(message.getBody(), "UTF-8");
-        WebUrl webUrl = convertToLink(content);
-        crawlerService.start(webUrl, this);
-
-    }
 }

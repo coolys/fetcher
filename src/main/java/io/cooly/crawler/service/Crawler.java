@@ -55,7 +55,7 @@ public final class Crawler {
         this.client = httpClient;
         //this.drainQueue();
          this.start(currentUrl);
-       // this.parallelDrainQueue(20);
+       //this.parallelDrainQueue(1);
     }
 
     private void parallelDrainQueue(int threadCount) {
@@ -148,7 +148,7 @@ public final class Crawler {
                     }
                 }
                 for (HttpUrl nextLink : nextLinks) {
-                    log.info("next link: {}", nextLink.url().toString());
+                    //log.info("next link: {}", nextLink.url().toString());
                     WebUrl webUrl = new WebUrl();
                     webUrl.setUrl(nextLink.url().toString());
                     //queue.add(nextLink.newBuilder().fragment(null).build());                                  
