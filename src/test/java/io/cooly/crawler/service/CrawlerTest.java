@@ -52,7 +52,7 @@ public class CrawlerTest {
             FetcherServiceClient fetcher = null;
           
            // Crawler crawler = new Crawler(webUrl.getUrl(), fetcher);
-            //crawler.start();
+            //crawler.crawl();
             //crawler.drainQueue();
           //  Set<WebUrl> nextLinks = crawler.getNextLink();
             //String json = new Gson().toJson(nextLinks);

@@ -54,7 +54,7 @@ public final class Crawler {
             .build();
         this.client = httpClient;
         //this.drainQueue();
-         this.start(currentUrl);
+         this.crawl(currentUrl);
        //this.parallelDrainQueue(1);
     }
 
@@ -86,7 +86,7 @@ public final class Crawler {
                 String originalName = currentThread.getName();
                 currentThread.setName("Crawler " + queueUrl.toString());
                 try {
-                    start(queueUrl);
+                    crawl(queueUrl);
                 } catch (Exception e) {
                     System.out.printf("XXX: %s %s%n", queueUrl, e);
                 } finally {
@@ -94,12 +94,13 @@ public final class Crawler {
                 }
             }
         } catch (Exception ex) {
+            log.error("drain-queue error : {}", ex.toString());
         }
     }
 
-    public void start(HttpUrl queueUrl) {
+    public void crawl(HttpUrl queueUrl) {
         try {
-            log.info("start fetch link: {}", queueUrl.url().toString());
+            log.info("crawl fetch link: {}", queueUrl.url().toString());
             // Skip hosts that we've visited many times.
             AtomicInteger hostnameCount = new AtomicInteger();
             Set<HttpUrl> nextLinks = new HashSet<>();
@@ -123,7 +124,7 @@ public final class Crawler {
                     + ")") : "(cache)";
                 int responseCode = response.code();
 
-                //System.out.printf("%03d: %s %s %s%n", responseCode, queueUrl.host(), queueUrl, responseSource);
+                log.info("%03d: %s %s %s%n", responseCode, queueUrl.host(), queueUrl, responseSource);
                 String contentType = response.header("Content-Type");
                 if (responseCode != 200 || contentType == null) {
                     return;
@@ -158,7 +159,7 @@ public final class Crawler {
 
             }
         } catch (Exception ex) {
-            log.info("Exception     : {}", ex.toString());
+            log.error("Exception     : {}", ex.toString());
         }
     }
 
