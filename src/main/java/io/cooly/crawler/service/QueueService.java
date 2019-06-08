@@ -12,6 +12,7 @@ import java.util.concurrent.CountDownLatch;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.*;
 import io.cooly.crawler.domain.WebUrl;
+import okhttp3.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.AmqpException;
@@ -46,6 +47,9 @@ public class QueueService {
     @Autowired
     private CrawlerService crawlerService;
 
+    @Autowired
+    private WebUrlService webUrlService;
+
     final static Gson gsonParser = new GsonBuilder()
         .registerTypeAdapter(Date.class, new JsonDeserializer() {
             public Date deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext context) throws JsonParseException {
@@ -78,6 +82,18 @@ public class QueueService {
         }
     }
 
+    public WebUrl update(WebUrl webUrl) {
+        webUrl = webUrlService.save(webUrl);
+        return webUrl;
+    }
+    public WebUrl updateError(WebUrl webUrl, Object error) {
+        webUrl.setFetchInfo(error);
+        webUrl.setFetchStatus(false);
+        webUrl.setFetched(true);
+        webUrl = webUrlService.save(webUrl);
+        return webUrl;
+    }
+
     public static String convertLinkToString(WebUrl link) {
         if(link == null) return null;
         String content = gson.toJson(link);
@@ -95,4 +111,14 @@ public class QueueService {
         return new Queue("crawl", false, false, true);
     }
 
+    public void updateFetch(WebUrl webUrl, Response response) {
+        webUrl.setHtml(response.body().toString());
+
+        webUrl.setFetchStatus(response.isSuccessful());
+        webUrl.setFetchInfo(response);
+        webUrl.setFetched(true);
+
+        webUrl = webUrlService.save(webUrl);
+
+    }
 }

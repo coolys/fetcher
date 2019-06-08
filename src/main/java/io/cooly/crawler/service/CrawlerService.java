@@ -26,14 +26,14 @@ public class CrawlerService {
 
 
     public void start(WebUrl weburl, QueueService queueService) throws Exception {
-        webUrlService.save(weburl);
-        Crawler crawler = new Crawler(weburl.getUrl(), fetcherServiceClient, queueService);
+        weburl = webUrlService.save(weburl);
+        Crawler crawler = new Crawler(weburl, fetcherServiceClient, queueService);
               
     }
     
     @Async
     public Future<WebUrl> startCrawl(WebUrl weburl, QueueService queueService) throws InterruptedException {
-        Crawler crawler = new Crawler(weburl.getUrl(), fetcherServiceClient, queueService);
+        Crawler crawler = new Crawler(weburl, fetcherServiceClient, queueService);
         return new AsyncResult<>(weburl);
     }
 
