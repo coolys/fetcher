@@ -9,6 +9,7 @@ package io.cooly.crawler.service;
  * @author hungnguyendang
  */
 
+import com.google.gson.Gson;
 import io.cooly.crawler.client.FetcherServiceClient;
 import io.cooly.crawler.domain.WebUrl;
 import okhttp3.*;
@@ -61,7 +62,7 @@ public final class Crawler {
 
             // Skip hosts that we've visited many times.
             AtomicInteger hostnameCount = new AtomicInteger();
-            Set<HttpUrl> nextLinks = new HashSet<>();
+
             AtomicInteger previous = hostnames.putIfAbsent(queueUrl.host(), hostnameCount);
             if (previous != null) {
                 hostnameCount = previous;
@@ -90,39 +91,60 @@ public final class Crawler {
 
                 MediaType mediaType = MediaType.parse(contentType);
                 if (mediaType == null || !mediaType.subtype().equalsIgnoreCase("html")) {
-                    this.queueService.updateError(webUrl, response);
+                    log.info("error fetching:{}", new Gson().toJson(response));
+                    this.queueService.updateError(webUrl,  responseSource);
                     return;
                 }
                 // should be in
-                Document document = Jsoup.parse(response.body().string(), queueUrl.toString());
-                log.info("finish fetch link: {}, {}", document.title(), queueUrl.url().toString());
+               // Document document = Jsoup.parse(response.body().string(), queueUrl.toString());
+                //log.info("finish fetch link: {}, {}", document.title(), queueUrl.url().toString());
+                String html = response.body().string();
 
-                this.queueService.updateFetch(webUrl, response);
+                this.queueService.updateFetch(webUrl, responseSource, html);
 
+                Set<WebUrl> nextLinks = getNextLink(response, webUrl, html);
 
-                for (Element element : document.select("a[href]")) {
-                    String href = element.attr("href");
-                    HttpUrl link = response.request().url().resolve(href);
-                    if (link == null) {
-                        continue; // URL is either invalid or its scheme isn't http/https.
-                    }
-                    if (link.host().equals(url.host())) {
-                        nextLinks.add(link);
-                    }
-                }
-                for (HttpUrl nextLink : nextLinks) {
-                    //log.info("next link: {}", nextLink.url().toString());
-                    WebUrl nextWebUrl = new WebUrl();
-                    nextWebUrl.setUrl(nextLink.url().toString());
-                    //queue.add(nextLink.newBuilder().fragment(null).build());                                  
-                    //fetchEngine.send(webUrl);
-                    this.queueService.start(nextWebUrl);
-                }
+                sendToQueue(nextLinks);
 
             }
         } catch (Exception ex) {
             log.error("Exception     : {}", ex.toString());
         }
+    }
+
+    private void sendToQueue(Set<WebUrl> nextLinks) {
+        if (nextLinks == null || nextLinks.size() == 0) return;
+        for (WebUrl nextLink : nextLinks) {
+            this.queueService.start(nextLink);
+        }
+    }
+
+    private Set<WebUrl> getNextLink(Response response, WebUrl webUrl, String html) {
+        Set<WebUrl> nextLinks = new HashSet<>();
+        try {
+            Document document = Jsoup.parse(html, webUrl.getUrl());
+            for (Element element : document.select("a[href]")) {
+                String href = element.attr("href");
+                HttpUrl link = response.request().url().resolve(href);
+                if (link == null) {
+                    continue; // URL is either invalid or its scheme isn't http/https.
+                }
+                if (link.host().equals(url.host())) {
+
+                    WebUrl nextWebUrl = new WebUrl();
+                    nextWebUrl.setUrl(link.url().toString());
+                    nextWebUrl.setDomain(link.host());
+                    nextWebUrl.setLevel(webUrl.getLevel() + 1);
+
+                    nextLinks.add(nextWebUrl);
+                }
+            }
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            log.error("get next links error: {}", ex.toString());
+        }
+        return nextLinks;
     }
 
 }

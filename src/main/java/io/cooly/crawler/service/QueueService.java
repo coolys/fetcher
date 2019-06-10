@@ -111,10 +111,9 @@ public class QueueService {
         return new Queue("crawl", false, false, true);
     }
 
-    public void updateFetch(WebUrl webUrl, Response response) {
-        webUrl.setHtml(response.body().toString());
-
-        webUrl.setFetchStatus(response.isSuccessful());
+    public void updateFetch(WebUrl webUrl, Object response, String html) {
+        webUrl.setHtml(html);
+        webUrl.setFetchStatus(true);
         webUrl.setFetchInfo(response);
         webUrl.setFetched(true);
 
